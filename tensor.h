@@ -317,7 +317,7 @@ Tensor* matmul(Tensor* a, Tensor* b) {
     return t;
 }
 
-
+// completed the matmul backward
 void matmul_backward(Tensor* out) {
     // a (P,Q), b (Q,R), c (P, R)
     int P = out->prevs[0]->data->shape[0];
@@ -330,12 +330,11 @@ void matmul_backward(Tensor* out) {
         for (int j = 0; j < Q; j++) {
             float tmp = 0.0f;
             for (int k = 0; k < R; k++) {
-                // (k,j) in b.T is (j,k) in b
-                int pos_b = j * out->prevs[1]->data->strides[0] + k * out->prevs[1]->data->strides[1]; 
-                tmp += out->grad->values[i * R + k] * out->prevs[1]->data->values[pos_b];
+                int pos_grad_c = i * R + k;
+                int pos_b = j * R + k;
+                tmp += out->grad->values[pos_grad_c] * out->prevs[1]->data->values[pos_b];
             }
-            int pos_da = i * Q + j;
-            out->prevs[0]->grad->values[pos_da] = tmp;
+            out->prevs[0]->grad->values[i * Q + j] += tmp;
         }
     }
     
@@ -345,13 +344,12 @@ void matmul_backward(Tensor* out) {
         for (int j = 0; j < R; j++) {
             float tmp = 0.0f;
             for (int k = 0; k < P; k++) {
-                // (i,k) in a.T is (k,i) in a
-                int pos_a = k * out->prevs[0]->data->strides[0] + i * out->prevs[0]->data->strides[1]; 
-                tmp += out->grad->values[k * R + j] * out->prevs[0]->data->values[pos_a];
+                int pos_a = k * Q + i;
+                int pos_grad_c = k * R + j;
+                tmp += out->prevs[0]->data->values[pos_a] * out->grad->values[pos_grad_c];
             }
-            int pos_db = i * R + j;
-            out->prevs[1]->grad->values[pos_db] = tmp;
+            out->prevs[1]->grad->values[i * R + j] += tmp;
         }
-    }   
+    }
 }
 
